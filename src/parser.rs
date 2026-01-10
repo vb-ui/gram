@@ -1,18 +1,18 @@
-use std::collections::HashMap;
-
 use crate::tokenizer::Token;
+
+pub type Participant = String;
 
 #[derive(Debug)]
 pub struct Edge {
-    pub to: String,
+    pub from: Participant,
+    pub to: Participant,
     pub message: Option<String>,
 }
 
 #[derive(Debug)]
-pub struct Graph {
-    pub nodes: Vec<String>,
-    // TODO: Adjacent list is not a good way to represent the graph. It's not optimized for the layout calculation.
-    pub adjacency: HashMap<String, Vec<Edge>>,
+pub struct SequenceDiagram {
+    pub participants: Vec<Participant>,
+    pub edges: Vec<Edge>,
 }
 
 #[derive(Debug)]
@@ -26,9 +26,9 @@ impl std::fmt::Display for ParseError {
     }
 }
 
-pub fn parse(tokens: Vec<Token>) -> Result<Graph, ParseError> {
-    let mut nodes: Vec<String> = Vec::new();
-    let mut adjacency: HashMap<String, Vec<Edge>> = HashMap::new();
+pub fn parse(tokens: Vec<Token>) -> Result<SequenceDiagram, ParseError> {
+    let mut participants = Vec::new();
+    let mut edges = Vec::new();
     let mut i = 0;
 
     while i < tokens.len() {
@@ -56,7 +56,7 @@ pub fn parse(tokens: Vec<Token>) -> Result<Graph, ParseError> {
             }
         };
 
-        let (from_node, to_node) = match &tokens[i + 1] {
+        let (from_participant, to_participant) = match &tokens[i + 1] {
             Token::RightArrow => (first_participant, second_participant),
             Token::LeftArrow => (second_participant, first_participant),
             _ => {
@@ -78,25 +78,26 @@ pub fn parse(tokens: Vec<Token>) -> Result<Graph, ParseError> {
             None
         };
 
-        if !nodes.contains(&from_node) {
-            nodes.push(from_node.clone());
+        if !participants.contains(&from_participant) {
+            participants.push(from_participant.clone());
         }
-        if !nodes.contains(&to_node) {
-            nodes.push(to_node.clone());
+        if !participants.contains(&to_participant) {
+            participants.push(to_participant.clone());
         }
 
-        adjacency
-            .entry(from_node)
-            .or_insert_with(Vec::new)
-            .push(Edge {
-                to: to_node,
-                message,
-            });
+        edges.push(Edge {
+            from: from_participant,
+            to: to_participant,
+            message,
+        });
 
         i += 3;
     }
 
-    Ok(Graph { nodes, adjacency })
+    Ok(SequenceDiagram {
+        participants,
+        edges,
+    })
 }
 
 #[cfg(test)]
@@ -124,29 +125,32 @@ mod tests {
             Token::ArrowMessage("JSON response".to_string()),
         ];
 
-        let graph = parse(tokens).unwrap();
+        let diagram = parse(tokens).unwrap();
 
-        assert_eq!(graph.nodes.len(), 3);
-        assert!(graph.nodes.contains(&"Client".to_string()));
-        assert!(graph.nodes.contains(&"Server".to_string()));
-        assert!(graph.nodes.contains(&"Database".to_string()));
+        assert_eq!(diagram.participants.len(), 3);
+        assert!(diagram.participants.contains(&"Client".to_string()));
+        assert!(diagram.participants.contains(&"Server".to_string()));
+        assert!(diagram.participants.contains(&"Database".to_string()));
 
-        let node1_edges = graph.adjacency.get("Client").unwrap();
-        assert_eq!(node1_edges.len(), 1);
-        assert_eq!(node1_edges[0].to, "Server");
-        assert_eq!(node1_edges[0].message, Some("GET /api/data".to_string()));
+        let edge1 = &diagram.edges[0];
+        assert_eq!(edge1.from, "Client");
+        assert_eq!(edge1.to, "Server");
+        assert_eq!(edge1.message, Some("GET /api/data".to_string()));
 
-        let node2_edges = graph.adjacency.get("Server").unwrap();
-        assert_eq!(node2_edges.len(), 2);
-        assert_eq!(node2_edges[0].to, "Database");
-        assert_eq!(node2_edges[0].message, Some("SELECT query".to_string()));
-        assert_eq!(node2_edges[1].to, "Client");
-        assert_eq!(node2_edges[1].message, Some("JSON response".to_string()));
+        let edge2 = &diagram.edges[1];
+        assert_eq!(edge2.from, "Server");
+        assert_eq!(edge2.to, "Database");
+        assert_eq!(edge2.message, Some("SELECT query".to_string()));
 
-        let node3_edges = graph.adjacency.get("Database").unwrap();
-        assert_eq!(node3_edges.len(), 1);
-        assert_eq!(node3_edges[0].to, "Server");
-        assert_eq!(node3_edges[0].message, Some("Result set".to_string()));
+        let edge3 = &diagram.edges[2];
+        assert_eq!(edge3.from, "Database");
+        assert_eq!(edge3.to, "Server");
+        assert_eq!(edge3.message, Some("Result set".to_string()));
+
+        let edge4 = &diagram.edges[3];
+        assert_eq!(edge4.from, "Server");
+        assert_eq!(edge4.to, "Client");
+        assert_eq!(edge4.message, Some("JSON response".to_string()));
     }
 
     #[test]
@@ -163,34 +167,39 @@ mod tests {
             Token::Participant("Server".to_string()),
             Token::LeftArrow,
             Token::Participant("Database".to_string()),
+            // Token::ArrowMessage("Result set".to_string()),
             Token::Participant("Client".to_string()),
             Token::LeftArrow,
             Token::Participant("Server".to_string()),
+            // Token::ArrowMessage("JSON response".to_string()),
         ];
 
-        let graph = parse(tokens).unwrap();
+        let diagram = parse(tokens).unwrap();
 
-        assert_eq!(graph.nodes.len(), 3);
-        assert!(graph.nodes.contains(&"Client".to_string()));
-        assert!(graph.nodes.contains(&"Server".to_string()));
-        assert!(graph.nodes.contains(&"Database".to_string()));
+        assert_eq!(diagram.participants.len(), 3);
+        assert!(diagram.participants.contains(&"Client".to_string()));
+        assert!(diagram.participants.contains(&"Server".to_string()));
+        assert!(diagram.participants.contains(&"Database".to_string()));
 
-        let node1_edges = graph.adjacency.get("Client").unwrap();
-        assert_eq!(node1_edges.len(), 1);
-        assert_eq!(node1_edges[0].to, "Server");
-        assert_eq!(node1_edges[0].message, Some("GET /api/data".to_string()));
+        let edge1 = &diagram.edges[0];
+        assert_eq!(edge1.from, "Client");
+        assert_eq!(edge1.to, "Server");
+        assert_eq!(edge1.message, Some("GET /api/data".to_string()));
 
-        let node2_edges = graph.adjacency.get("Server").unwrap();
-        assert_eq!(node2_edges.len(), 2);
-        assert_eq!(node2_edges[0].to, "Database");
-        assert_eq!(node2_edges[0].message, Some("SELECT query".to_string()));
-        assert_eq!(node2_edges[1].to, "Client");
-        assert_eq!(node2_edges[1].message, None);
+        let edge2 = &diagram.edges[1];
+        assert_eq!(edge2.from, "Server");
+        assert_eq!(edge2.to, "Database");
+        assert_eq!(edge2.message, Some("SELECT query".to_string()));
 
-        let node3_edges = graph.adjacency.get("Database").unwrap();
-        assert_eq!(node3_edges.len(), 1);
-        assert_eq!(node3_edges[0].to, "Server");
-        assert_eq!(node3_edges[0].message, None);
+        let edge3 = &diagram.edges[2];
+        assert_eq!(edge3.from, "Database");
+        assert_eq!(edge3.to, "Server");
+        assert_eq!(edge3.message, None);
+
+        let edge4 = &diagram.edges[3];
+        assert_eq!(edge4.from, "Server");
+        assert_eq!(edge4.to, "Client");
+        assert_eq!(edge4.message, None);
     }
 
     #[test]
@@ -209,7 +218,7 @@ mod tests {
             Token::Participant("Database".to_string()),
             Token::ArrowMessage("Result set".to_string()),
             Token::Participant("Client".to_string()),
-            // Missing arrow
+            // Token::LeftArrow,
             Token::Participant("Server".to_string()),
         ];
 
