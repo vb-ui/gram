@@ -252,7 +252,7 @@ Release: continue, 06-02-2026";
 Design: 01-01-2026, 4d
 Implementation: 05-01-2026, 10d
 Testing: 15-01-2026, 5d
-Bugfix: 20-01-2026, 2d
+Bugfix: 20-01-2026, 14d
 Release: 03-02-2026, 3d";
 
         let gantt_chart = parse(input).unwrap();
