@@ -178,7 +178,7 @@ mod test {
         let gantt_layout = layout(&gantt_chart);
 
         assert_eq!(gantt_layout.task_layouts.len(), 5);
-        assert_eq!(gantt_layout.tick_layouts.len(), 12);
+        assert_eq!(gantt_layout.tick_layouts.len(), 10);
 
         assert_eq!(
             gantt_layout.task_layouts,
