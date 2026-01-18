@@ -1,14 +1,16 @@
 use std::collections::HashSet;
 
+pub type Node = String;
+
 #[derive(Debug, PartialEq)]
 pub struct Edge {
-    pub from: String,
-    pub to: String,
+    pub from: Node,
+    pub to: Node,
 }
 
 #[derive(Debug)]
 pub struct Graph {
-    pub nodes: HashSet<String>,
+    pub nodes: HashSet<Node>,
     pub edges: Vec<Edge>,
 }
 
